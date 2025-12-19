@@ -1,0 +1,1914 @@
+<!doctype html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
+    <title>Kitty Elif</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.0/dist/phaser.min.js"></script>
+    <style>
+        /* CSS kodu aynı kalacak */
+        :root {
+            --ink: #0b0e18;
+            --panel: rgba(20, 22, 35, .55);
+            --border: rgba(255, 255, 255, .12);
+            --bad: #ff5c7a;
+            --romantic-pink: #ff69b4;
+            --love-purple: #8a2be2;
+            --gold: #ffd700;
+            --heart-red: #ff4757;
+            --heart-blue: #3742fa;
+            --heart-green: #2ed573;
+            --heart-yellow: #ffa502;
+            --heart-purple: #8e44ad;
+            --safeL: env(safe-area-inset-left);
+            --safeB: env(safe-area-inset-bottom)
+        }
+
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: var(--ink);
+            color: #fff;
+            font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        #game {
+            width: 100vw;
+            height: 100svh
+        }
+
+        canvas {
+            display: block
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none
+        }
+
+        .hud {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-left: var(--safeL)
+        }
+
+        .pill {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 8px 12px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .35)
+        }
+
+        .speech-bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            color: #111;
+            font-weight: 700;
+            border: 2px solid var(--romantic-pink);
+            border-radius: 16px;
+            padding: 8px 12px;
+            z-index: 1000;
+            font-size: 12px;
+            max-width: 160px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            /* Ortalamak için */
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid var(--romantic-pink);
+        }
+
+        .speech-bubble.visible {
+            opacity: 1;
+        }
+
+        #start {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(180deg, #1a0a14, #0b0e18);
+            z-index: 5;
+            pointer-events: auto
+        }
+
+        #start .card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            text-align: center;
+            padding: 24px;
+            max-width: 90vw;
+        }
+
+        .love-title {
+            background: linear-gradient(45deg, var(--romantic-pink), var(--love-purple), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5em;
+            margin: 0;
+        }
+
+        #playBtn {
+            cursor: pointer;
+            border: 0;
+            width: min(42vw, 180px);
+            height: min(42vw, 180px);
+            border-radius: 50%;
+            background: radial-gradient(60% 60% at 30% 30%, rgba(255, 255, 255, .35), transparent 60%),
+                conic-gradient(from 210deg, var(--romantic-pink), #ff9bf5, #ff7bbf, var(--love-purple), var(--romantic-pink));
+            box-shadow: 0 18px 50px rgba(255, 105, 180, .4), inset 0 -6px 24px rgba(0, 0, 0, .25);
+            color: white;
+            font-weight: 900;
+            font-size: 18px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #playBtn:active {
+            transform: scale(0.95);
+            box-shadow: 0 8px 25px rgba(255, 105, 180, .3), inset 0 -4px 20px rgba(0, 0, 0, .3);
+        }
+
+        #hitFlash {
+            position: fixed;
+            inset: 0;
+            border: 6px solid var(--bad);
+            opacity: 0;
+            pointer-events: none;
+            border-radius: 18px;
+            transition: opacity .15s ease
+        }
+
+        #vjBase {
+            position: fixed;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(26, 32, 56, .2) 0%, rgba(26, 32, 56, .7) 60%);
+            border: 2px solid rgba(255, 255, 255, .2);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .2);
+            display: none;
+            opacity: 0;
+            transition: opacity .15s ease;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 4
+        }
+
+        #vjKnob {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--romantic-pink);
+            border: 3px solid #7a0f35;
+            transform: translate(0, 0);
+            transition: transform .05s ease
+        }
+
+        #over {
+            position: fixed;
+            inset: 0;
+            display: none;
+            place-items: center;
+            pointer-events: auto;
+            background: rgba(9, 10, 16, .85);
+            z-index: 10
+        }
+
+        #over .box {
+            background: #151a2c;
+            border: 2px solid var(--romantic-pink);
+            border-radius: 14px;
+            padding: 18px 20px;
+            text-align: center;
+            max-width: 90vw;
+        }
+
+        #over button {
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--romantic-pink);
+            background: #2a2f4d;
+            color: #fff;
+            transition: transform 0.2s;
+            min-height: 44px;
+            min-width: 44px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #over button:active {
+            transform: scale(0.95);
+        }
+
+        #levelUp {
+            position: fixed;
+            inset: 0;
+            display: none;
+            place-items: center;
+            pointer-events: auto;
+            background: rgba(7, 8, 12, .8);
+            z-index: 10
+        }
+
+        #levelUp .box {
+            background: #12162a;
+            border: 2px solid var(--romantic-pink);
+            border-radius: 16px;
+            padding: 18px 16px;
+            max-width: min(94vw, 560px);
+            text-align: center;
+            width: 90%;
+            margin: 0 auto;
+        }
+
+        .perks {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        @media (min-width: 768px) {
+            .perks {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .perk {
+            cursor: pointer;
+            border: 0;
+            border-radius: 12px;
+            padding: 16px 12px;
+            font-weight: 800;
+            color: #1a0a14;
+            background: linear-gradient(180deg, #ffd6f0, var(--romantic-pink));
+            font-size: 14px;
+            transition: transform 0.2s, background 0.2s;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .perk:active {
+            transform: scale(0.95);
+            background: linear-gradient(180deg, #ffc0e0, var(--romantic-pink));
+        }
+
+        .perk div:first-child {
+            font-size: 16px;
+            font-weight: 900;
+            margin-bottom: 4px;
+        }
+
+        .perk div:last-child {
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .status {
+            position: fixed;
+            left: 12px;
+            bottom: calc(12px + var(--safeB));
+            max-width: 86vw;
+            font-size: 12px;
+            color: #e8ecff;
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+            border-radius: 12px
+        }
+
+        .love-message {
+            color: var(--romantic-pink);
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .heart-pulse {
+            animation: heartPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .combo-indicator {
+            position: absolute;
+            color: var(--gold);
+            font-weight: 900;
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .heal-effect {
+            position: absolute;
+            color: var(--heart-green);
+            font-weight: 900;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .pulse-red {
+            animation: pulseRed 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseRed {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+            }
+        }
+
+        /* Mobil optimizasyonları */
+        @media (max-width: 768px) {
+            #levelUp .box {
+                padding: 16px 12px;
+                max-width: 95vw;
+            }
+
+            .perk {
+                min-height: 70px;
+                padding: 14px 10px;
+            }
+
+            .perk div:first-child {
+                font-size: 15px;
+            }
+
+            .perk div:last-child {
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #levelUp .box {
+                padding: 14px 10px;
+            }
+
+            .perk {
+                min-height: 65px;
+                padding: 12px 8px;
+            }
+
+            .perk div:first-child {
+                font-size: 14px;
+            }
+
+            .perk div:last-child {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="start">
+        <div class="card">
+            <h1 class="love-title">Elif hanım özel oyun</h1>
+            <p>🎮 kittykitty</p>
+            <p>🕹️ Basılı tut & sürükle: basit bir rogue-like oyun tarzi yapmak istedim</p>
+            <p>💖 kalpleri topla, kötü kalpleri öldür</p>
+            <div class="love-message heart-pulse">GICIK OLACAĞIN BİR OYUN</div>
+            <button id="playBtn" type="button">-BAŞLAT-</button>
+        </div>
+    </div>
+
+    <div id="game" role="application" aria-label="kittyElif"></div>
+
+    <div class="overlay" aria-hidden="true">
+        <div class="hud">
+            <div class="pill" id="scorePill">Skor: 0 · Rekor: 0</div>
+            <div class="pill" id="hpPill">Can: 150/150</div>
+            <div class="pill" id="lvlPill">Lv: 1 · Hedef: 0/8</div>
+            <div class="pill" id="comboPill">Kombo: 1x</div>
+        </div>
+
+    </div>
+
+    <div id="hitFlash"></div>
+    <div id="vjBase" aria-hidden="true">
+        <div id="vjKnob"></div>
+    </div>
+
+    <div id="over">
+        <div class="box">
+            <h2>Oyun Bitti hüü</h2>
+            <div id="overScore" style="color:#e6e6ff;margin-bottom:6px"></div>
+            <div class="love-message" id="endMessage">DÜZGÜN OYNA! -cagdas</div>
+            <button id="restartBtn" type="button">TEKRAR OYNA 💫</button>
+        </div>
+    </div>
+
+    <div id="levelUp">
+        <div class="box">
+            <h3>🎉 Seviye Atladın! Bir yükseltme seç</h3>
+            <div class="perks" id="perks"></div>
+        </div>
+    </div>
+
+    <script>
+        if (!window.__HEART_GAME_INIT__) {
+            window.__HEART_GAME_INIT__ = true;
+
+            (function () {
+                // Geliştirilmiş özel mesajlar
+                const LOVE_MESSAGES = [
+                    "HOHOHHOHOO",
+                    "Harika🌟",
+                    "BU DA NE, essek",
+                    "ABART 🌸",
+                    "TAMAM SAKIN OLUYOSUN",
+                    "Muhteşemsin!",
+                    "sacmaliiikkk",
+                    "elif hanimm"
+                ];
+
+                const SPECIAL_MESSAGES = {
+
+                };
+
+                // Renkli kalp emojileri
+                const COLORFUL_HEARTS = [
+                    "🐥", "🐣", "🐱", "🦦", "🐧", "🍩", "🍪", "🥞", "🥨", "🧁", "🍦", "🎈", "🧸", "🥤", "🪁"
+                ];
+
+                // Korkutucu düşman emojileri
+                const ENEMY_EMOJIS = ["👹", "💀", "👻", "😈", "🤖", "👾", "🦇", "🐍", "🕷️", "🦂", "☠️"];
+
+                const NOTE_MAP = {
+                    "👹": "Canavar geldii!",
+                    "💀": "Ölüm kokuyor!",
+                    "👻": "Hayalet!",
+                    "😈": "Şeytan!",
+                    "🤖": "Robot!",
+                    "👾": "Uzaylı istilası!",
+                    "🦇": "Yarasa!",
+                    "🐍": "Yılan!",
+                    "🕷️": "Örümcek!",
+                    "🦂": "Akrep!",
+                    "☠️": "Ölüm tehlikesi!"
+                };
+
+                const playBtn = document.getElementById('playBtn');
+                const statusEl = document.getElementById('status');
+                const eScore = document.getElementById('scorePill');
+                const eHP = document.getElementById('hpPill');
+                const eLVL = document.getElementById('lvlPill');
+                const eCombo = document.getElementById('comboPill');
+                const hitFlash = document.getElementById('hitFlash');
+                const levelUp = document.getElementById('levelUp');
+                const perksEl = document.getElementById('perks');
+                const over = document.getElementById('over');
+                const overScore = document.getElementById('overScore');
+                const restartBtn = document.getElementById('restartBtn');
+                const vjBase = document.getElementById('vjBase');
+                const vjKnob = document.getElementById('vjKnob');
+                const endMessage = document.getElementById('endMessage');
+
+                restartBtn.addEventListener('pointerdown', () => location.reload());
+
+                // Sürükle bırak desteği
+                window.addEventListener('dragover', e => { e.preventDefault(); });
+                window.addEventListener('drop', e => {
+                    e.preventDefault();
+                    if (e.dataTransfer?.files?.length) {
+                        adoptFiles(e.dataTransfer.files);
+                    }
+                });
+
+                let GAME_CREATED = false;
+
+
+
+                const PNG_FRAMES_BASE64 = [
+                    "data:image/png;base64,R0lGODlhLAGQAfIAAPpNQ/r1SXzN5GUbNvj4+P///wAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/wtYTVAgRGF0YVhNUDw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNSBXaW5kb3dzIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkVGMzFFMzFCMzY5NDExRUI5MERCOTQxRTMzNkFFMEQ5IiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkVGMzFFMzFDMzY5NDExRUI5MERCOTQxRTMzNkFFMEQ5Ij4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6RUYzMUUzMTkzNjk0MTFFQjkwREI5NDFFMzM2QUUwRDkiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6RUYzMUUzMUEzNjk0MTFFQjkwREI5NDFFMzM2QUUwRDkiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz4B//79/Pv6+fj39vX08/Lx8O/u7ezr6uno5+bl5OPi4eDf3t3c29rZ2NfW1dTT0tHQz87N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",
+                    "data:image/png;base64,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",
+                    "data:image/png;base64,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",
+                    "data:image/png;base64,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",
+                    "data:image/png;base64,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",
+                    "data:image/png;base64,R0lGODlhLAGQAfIAAPpNQ/r1SXzN5GUbNvj4+P///wAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQJCgAFACwAAAAALAGQAQAD/1i63P4wykmrvTjrzbv/YCiOZGmeaKqubOu+cCzPdG3feK7vfO//wKBwSCwaj8ikcslsOp/QqHRKrVqv2Kx2y+16v+CweEwum8/otHrNbrvf8Lh8Tq/b7/i8fs/v+/+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8JYD8/T19vYc9/r7/O78/wPyARx4zx/BghsOKgzYbmE9gQ4BGowIMWK/hhYrWtQ30f+hxo34MFJMCHJfx4UfS847qTClSkUbnfwDQLOmzZs3NxLYybOnz59Ad/4DFLPJTJxIceoMyrSp0It+ijI5mrQqgKVOs/oc+kfqEqpWkWLVSpZr1IxG+YWtOpZsVrN9vCoBu9ZmW7dN4fKRm4RuXZp38QbVu4cvEr9/Awv+SViP4SOI6ype3LNxnsdGIq+dTPmpyTr/OluWofmvWJX3REOdE5ry6BilTedEbU/1ZzqtF7+GEVt2Tdq1Xa+Wk1vw7he9fV8FTs82R9D8nCPEkdw38+bCb7OOnv05dbXKw16fJz0kbu66h9eoLnv8gPIPoe+DT08He9Pu6a+Ur08/w+//+4Qn3nj+2VEcXse5cF9iBHY3XRoHduaWe+5ZVSFbFGqHRoQSapXhdRaOF+KH5kGIXocTkkjbiMyxqOJ/Js6HIoIvquTiihjWCOOGJ874lo4g3YiakB+ywaGPgwG5EZElMUmhkT0iyZSSS+bYopUvQimjlE5RaZGTVSalpJb9cdmllw6B+SWWKpKZmpl5obmQmhHRyZybwcGpp5QL/gaegGL+aZ16XBy556HGCdqeooDaxSiDGnZhKKKU/hhgeH1u9qhkhG4xaaWgApXpcpc2qtSmmkZaaJShtioqqgOWaqqjsi6qqqesuqqrZ/oIOKqTvnaqxae7gjrqr2zWE+yt/8PmWmyrx8K6bK+YCpsFsc8iGm2ts5JKrXIJVoFttntu+223gEmbbH1hjEuuq0raOee6+4Hh7ruhxktvkPuKcS++leobKIj9tusswLsKfBrBA3v3xb8IH6rwqQwv7LAXEEes58SzVUzxxZIerHG+QMqrkJP+ijxywCXvG6bFD2Ks8srattwwcCgbvCXNCdsMM443lyjzzjwX7aGI6PrJ7LUzG+30hUl7G3PIRDttNWNIRx0uFRlfjTDUSW89Rdde4ws2umJLQXbZ5J7dbdpRrM32s27PCjcUcs/ds8dvW4tF3nrDm3XYfl8BeOAk82134VYcjjjP5k5thuOPrxy50P9nUF65xpfHp4bmm3+tbtCex1hm6Kjz1Dm7nzeduter12v6m6+jHvuOmbte+9Oj/1w6j1XvHvjteNYjfOjE63z68cwnGVGcS8uke/O2WwQ9yGpPT/3mnN1dBOjbF909419pHz7i40efVvDnC58+9nGb3/7c70seP/vzv14/5tnjn3/1z5sS+eYiv/9dbX+/G1sBDfg/7xEBfAx03wD7ssAIts+BQ4CgBfU3wcNUcIPbw6AQNAhC5HUQMh8sIfNEGAQSqvBxLASCC184vBNmJoU0rF0MfzDDHLJthz7ooQ9hZ8Pv4XCIJlTfVI6IxMoBsQdCbKLRnsiDKEoRckV8IBP/r6g3Ku7AilwcmRfts8Uwlm2MOQCjGUWnxBY2aI3oG48WrwNHGMoxg2+sI/3uOMI86vGMfHQjHf+4x+vMkTmELOSd8DjIRBLRkIxEpCMfucg+NnKSvIOkJSWJyUxWsnz+Y+PyStg1NAJolDRT4xTlZ8obqDJRoWwgK7MYSdqJr4xOnGUbCRhLs+HSjr181S4pGMy2/TKOxdwKLTdpSywmM3ylXKYgUWm5Y9bwmaqTpgytiaRXOpOaRxumB7G5N3BGMJriRGEAfUnO5k0KM0/gjODaucKDwVN663yXN1NpT7Q0znoA22c1/XfP9TlElM0E4Tv9KS6AstOcDFzoSP6Z/09j0vN4EvWI4RyqT24qMqGVYSjXOGpRiBowoyjZaEWzJVAx9nOioDyoGQNA05ra9KY3zSVMt7nSJuL0pz/VqUaZqZA1AvWoNRVqSol6EKMi9ahKbUktizrTpwI1qgc55EKcalWcYpUgWqVqGLsaVGAOdZpbrSpZbfrVgYS1qWpdK03bKpGpwnWsck2qWZfa0It2MnHwI0NL/3qmdDbLr4SlVCt5adLEltR+gvWoYwu0hsFOFmuGZRpiLwunxRKzsZzVlWfHCdrQQkubCtysabuJ2v7JdLVcKqi9SArbGcn2YbStbYduO7TX6ta2Is1dT3/rIKm2brjEheVZgefb5P/6Z7TqbK5z07NT4Up3ujSq7uRyi92yBHdVmZWnGXnbAOiSpojiDSN5GWBe2KCXu3Vc7wLay5v3IheO8lUAfZFj3+vqMb8F2K+C+pvWSQJYwC3wXnq5eODWQpHAYnVkgzP7VtZlYMFXnHBg4wnhu0r4uxVA8EjlRGIgyaLEKK7RiVPM4gytuMUw/qQrYkxj2ry4xjjW7ipyzOPltqLHQAZrLIJMZAfLo8hITiAr/pHXrv5DAFCOspSZ3OSnPlnKWBZxIahc5aNeGctR5nKXf/plMAtAy4QQ85hvWmYwq3nNNW1zlo1ciTfDOQBynjI/7ozTPIeZzpSwM5z9DGVBr5n/0GcG9CQMPWZEM7rLjla0JB5d5Ujvg89s5oeZ/0zhTlC6yZbWB6ZtGmrIpuLTeS21PUYdZ01vOtGd5gSq5arqerCaprW28Iz3XOmX6uPVsE6yrkcx60wT1NWbFjb/QlFsUvv6HsBWtpKZzWtQP9se0Za27EjR7FYfex/Z1jYquo3ra9cj3NIed7VTbW56oFvZ6r50r7/961dre9vEXjet2z2Pdws73qKeN0RzXWSA3wOpoEM0sP1tPAHqGBSMTjiyF05xPdObr9zWt7FLm916V/zjwQZpNh/+iYiXUeEgt/jAQQxxjTtbtSEFd8orjlLjlsLkMB+5x2fOcOw4z8ei/8A5x1Mkc573nDwOBzq15Q1UiRfd6Mnmd11NIXSR73biUHez1NF8GZd7e+jefXrW53xxmxvCPUd/j5lQPnatp5go40l7Z7Hedoq3GO7Xkfva6V73tI+pK3G398n53veovx3weRd8znkF7cLTnMV4Z47eY0t4x5MdxZEHzuT5VHnLcxrziJe84sEezp173sx3D73mR291CbHd8ak/S+INT3pLmf70ly9x5vMkzNurvPVzFzvuf8971sYat2U/N+uLr9jOn97pGy6ez3vfeNoDf+/CH36hB3/83rae4GoHbPW1T/yGU777VFt59j9//fP7XvvQN7X0kf7z8bu99q53vv/n479sN9Rc+dbHfDWzfsPHf9Pmf1K3eSxDgLhngMMGB//nbstnfsaif5bngPgGgQk4gdO3gO9XgNwXffyxEFCHgQNAfvfXfpyHfuDlECUYgvaHglbEdTcUES+4eATweoU3g5LWVy5odCaIgrkngBLTgyP2gzwXhELIfkRYLkaYWkg4c0q4hCHXhBvzhK5FgkAIg9hGhVVIgR4of5VlETeIf9cTg+THgyyIKza4hTiog32nhiJ4XFGYclO4hHIohufRhkkYeFRoWTTIYXwohX6Ih5JVenq4HYNoh4UohICIhWxYhyCHdl74iGsYWYs4iY0og4doe4lIHGTohqL3h53/WFhzqIiS+HGUSIo4SFmyl4qPN3uG2IrFdYB3sBFluHqsaIbYd4qgmImquIlpWIpn2H+3uHUW6IV9SIvU5YtxEIEDoYzPR4xJ94nPiIwMKI2iqIJhaIwGgo0fqI3baIXz5IwamHwEIY6wR431540jaIW4qI5xyI7U5457qH6wKI+EyIzKZY3niI9aqI9jZ4nm+AbQCBAC2XYE6Y8GCY5omJCayI8dx5AI+Ib3lof2GBdceJFg2HyX2AYmeJHlSJHHaJEcyYvNSJLfaJInSY69qJLv2JHA1ZIu6X4weY/cSHQ02YEeWZB4EJL3NpIZuRcb2ZJCaYu7J5MospM1uYI+xxkIlhV8/uWEH7mSKHlL9yWVN6mREslS8HWFVRmTPJk6GOYjgZgyXUk3X6mVQ7ll9NiNHgaXD9gIUfmSESaXGUiXb9mTBVaBYYmTTdlFa2mXSJkIdWmTd8mXbekIh9mPxvh3VLeXM7lhkHlzkrmU1lKZGZeWRbg0mplvnEmVlGlip9CYE/mYpBmZoQmWo6kjBheY/OSZqWmZq8mWtviZQXeZVyebrjlk98YSSQacSCacBScS6Wac8Iac/6acwcmcw+mcxYkICQAAOw==",
+                    "data:image/png;base64,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",
+                    "data:image/png;base64,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"
+                ];
+
+                // IDLE (DURMA) PNG'si için base64 kodunu buraya ekleyin
+                const IDLE_FRAME_BASE64 = "data:image/png;base64,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";
+                const PNG_FRAMES = PNG_FRAMES_BASE64;
+                // PNG frame'lerini yükleme
+                function loadPNGFramesToScene(scene) {
+                    console.log('PNG frame\'leri base64 formatında yükleniyor...');
+                    let loadedCount = 0;
+
+                    return new Promise((resolve) => {
+                        // Walk animasyonu için frame'leri yükle
+                        PNG_FRAMES_BASE64.forEach((base64String, index) => {
+                            if (!base64String || base64String === "data:image/png;base64,FRAME_" + index + "_BASE64_STRING") {
+                                console.warn(`✗ Frame ${index} base64 kodu eksik`);
+                                return;
+                            }
+
+                            try {
+                                const textureKey = `frame${index}`;
+                                if (scene.textures.exists(textureKey)) {
+                                    scene.textures.remove(textureKey);
+                                }
+                                scene.textures.addBase64(textureKey, base64String);
+                                loadedCount++;
+                                console.log(`✓ Frame ${index} base64'ten yüklendi`);
+                            } catch (error) {
+                                console.warn(`✗ Frame ${index} yüklenemedi:`, error);
+                            }
+                        });
+
+                        // Idle frame'ini yükle
+                        if (IDLE_FRAME_BASE64 && IDLE_FRAME_BASE64 !== "data:image/png;base64,BURAYA_IDLE_PNG_BASE64_KODUNU_EKLEYIN") {
+                            try {
+                                const idleTextureKey = 'idleFrame';
+                                if (scene.textures.exists(idleTextureKey)) {
+                                    scene.textures.remove(idleTextureKey);
+                                }
+                                scene.textures.addBase64(idleTextureKey, IDLE_FRAME_BASE64);
+                                loadedCount++;
+                                console.log(`✓ Idle frame base64'ten yüklendi`);
+                            } catch (error) {
+                                console.warn(`✗ Idle frame yüklenemedi:`, error);
+                            }
+                        }
+
+                        setTimeout(() => {
+                            console.log(`Toplam ${loadedCount} frame yüklendi`);
+                            resolve(loadedCount);
+                        }, 100);
+                    });
+                }
+
+                playBtn.addEventListener('pointerdown', async () => {
+                    if (GAME_CREATED) return;
+
+                    document.getElementById('start').style.display = 'none';
+
+
+                    try {
+                        if (window.Phaser && Array.isArray(Phaser.GAMES)) {
+                            Phaser.GAMES.slice().forEach(g => { try { g.destroy(true); } catch (e) { } });
+                        }
+                        document.querySelectorAll('#game canvas').forEach(c => c.remove());
+                    } catch (e) { }
+
+                    const cfg = {
+                        type: Phaser.CANVAS,
+                        parent: 'game',
+                        transparent: true,
+                        banner: false,
+                        scale: {
+                            mode: Phaser.Scale.RESIZE,
+                            autoCenter: Phaser.Scale.CENTER_BOTH,
+                            width: window.innerWidth,
+                            height: window.innerHeight
+                        },
+                        physics: { default: 'arcade', arcade: { debug: false } },
+                        render: { powerPreference: 'high-performance', roundPixels: true },
+                        scene: [Scene]
+                    };
+
+                    const game = new Phaser.Game(cfg);
+                    GAME_CREATED = true;
+
+                    game.events.once('ready', () => {
+                        const scene = game.scene.getScene('s');
+                        if (scene) {
+                            loadPNGFramesToScene(scene).then((loadedCount) => {
+                                if (loadedCount > 0) {
+
+                                    scene.createPlayerAnimation(true);
+                                } else {
+
+                                }
+                            });
+                        }
+                    });
+                }, { once: true });
+
+                // =================== Oyun Sabitleri ===================
+                const PLAYER = { SPEED: 340, R: 20, HP: 150, DASH: 170, DASH_TIME: 110 };
+                const PUNCH_BASE = { RANGE: 110, COOLDOWN: 230, DMG: 40, KNOCK: 640, STUN: 360, ARCRAD: 0.9 };
+                const LV_TABLE = [[10, 12, 2], [14, 14, 3], [18, 16, 4], [22, 18, 6], [26, 20, 7], [30, 22, 8]];
+                const LEVEL_TARGET = 8;
+                const HEARTS = {
+                    NORMAL: {
+                        BASE: 98,
+                        PANIC_R: 80,
+                        PANIC_MULT: 2.0,
+                        JITTER: 24,
+                        COLORS: COLORFUL_HEARTS,
+                        BOOST_MIN: 0.8,
+                        BOOST_MAX: 1.6,
+                        BOOST_T: 1000,
+                        WALL_PUSH: 160,
+                        CENTER_PULL: 70
+                    },
+                    ZOMBIE: {
+                        BASE: 90,
+                        PURSUIT: 70,
+                        ATK_R: 26,
+                        ATK_CD: 620,
+                        DMG: 10,
+                        EMOJIS: ENEMY_EMOJIS
+                    }
+                };
+
+                const ALL_PERKS = [
+                    { id: 'hp', name: 'Daha Sağlam', desc: '+25 maksimum can', apply: S => { S.maxHP += 25; S.player.hp += 25; } },
+                    { id: 'range', name: 'Uzatılmış Kol', desc: '+20% menzil', apply: S => { S.punch.RANGE = Math.round(S.punch.RANGE * 1.2); } },
+                    { id: 'power', name: 'Güç Artışı', desc: '+30% hasar', apply: S => { S.punch.DMG = Math.round(S.punch.DMG * 1.3); } },
+                    { id: 'combo', name: 'Hızlı Kombin', desc: '-18% bekleme', apply: S => { S.punch.COOLDOWN = Math.max(110, Math.round(S.punch.COOLDOWN * 0.82)); } },
+                    { id: 'shock', name: 'Şok Halka', desc: 'Vuruşta halka itişi', apply: S => { S.shockRing = true; S.punch.ARCRAD = 1.15; } },
+                    { id: 'guard', name: 'Zırh', desc: 'Anlık hasar -2', apply: S => { S.flatDR = (S.flatDR || 0) + 2; } },
+                    { id: 'suck', name: 'Mıknatıs', desc: 'Kalpler merkeze çekilir', apply: S => { HEARTS.NORMAL.CENTER_PULL += 30; } },
+                    { id: 'speed', name: 'Hız Artışı', desc: '+15% hareket hızı', apply: S => { S.playerSpeedBoost = 1.15; } },
+                    { id: 'comboBonus', name: 'Kombo Bonusu', desc: 'Kombo süresi +2sn', apply: S => { S.comboDuration += 2000; } },
+                    { id: 'heal', name: 'İyileşme', desc: 'Zamanla can yenileme', apply: S => { S.healthRegen = 0.5; } },
+                ];
+
+                // ============ Kullanıcının karelerini içeri alma ============
+                function naturalSortFiles(files) {
+                    const arr = [...files].filter(f => f.type.startsWith('image/'));
+                    arr.sort((a, b) => {
+                        const ax = a.name.toLowerCase(), bx = b.name.toLowerCase();
+                        const na = ax.match(/\d+/g), nb = bx.match(/\d+/g);
+                        const an = na ? parseInt(na[na.length - 1], 10) : -1;
+                        const bn = nb ? parseInt(nb[nb.length - 1], 10) : -1;
+                        return (an - bn) || ax.localeCompare(bx);
+                    });
+                    return arr;
+                }
+
+                function fileToDataURL(file) {
+                    return new Promise((res, rej) => {
+                        const r = new FileReader();
+                        r.onload = () => res(r.result);
+                        r.onerror = rej;
+                        r.readAsDataURL(file);
+                    });
+                }
+
+                function dataURLToImage(data) {
+                    return new Promise((res, rej) => {
+                        const img = new Image();
+                        img.onload = () => res(img);
+                        img.onerror = rej;
+                        img.src = data;
+                    });
+                }
+
+                async function adoptFiles(fileList) {
+                    const scene = window.__scene;
+                    if (!scene) {
+
+                        return;
+                    }
+
+                    const sorted = naturalSortFiles(fileList);
+                    if (!sorted.length) {
+
+                        return;
+                    }
+
+                    for (let i = 0; i < 256; i++) {
+                        const k = `user${i}`;
+                        if (scene.textures.exists(k)) scene.textures.remove(k);
+                    }
+
+                    let idx = 0;
+                    for (const f of sorted) {
+                        try {
+                            const data = await fileToDataURL(f);
+                            const img = await dataURLToImage(data);
+                            scene.textures.addImage(`user${idx++}`, img);
+                        } catch (e) {
+                            console.error('Resim yükleme hatası:', e);
+                        }
+                    }
+
+                    if (idx < 2) {
+
+                        return;
+                    }
+
+                    const frames = [];
+                    for (let i = 0; i < idx; i++) frames.push({ key: `user${i}` });
+
+                    if (scene.anims.exists('player_walk')) scene.anims.remove('player_walk');
+                    scene.anims.create({ key: 'player_walk', frames, frameRate: 10, repeat: -1 });
+
+                    const wasX = scene.player.x, wasY = scene.player.y;
+                    scene.player.destroy();
+                    scene.player = scene.physics.add.sprite(wasX, wasY, 'user0').setDisplaySize(58, 58);
+                    scene.player.setCircle(PLAYER.R).setCollideWorldBounds(true);
+                    scene.player.hp = scene.player.hp || PLAYER.HP;
+                    scene.player.play('player_walk');
+
+
+                    scene.showSpeechBubble("Yeni görseller harika! ", scene.player);
+                }
+
+                // =================== Joystick ===================
+                function FloatingVJoy() {
+                    this.active = false;
+                    this.id = null;
+                    this.max = 70;
+                    this.dead = 8;
+                    this.tx = 0;
+                    this.ty = 0;
+                    this.baseX = 0;
+                    this.baseY = 0;
+                    this.baseSize = 160;
+                    this.hideTimeout = null;
+
+                    const down = (e) => {
+                        if (this.active || !window.__scene?.started || e.target.closest('#start') || e.target.closest('#over') || e.target.closest('#levelUp')) return;
+                        if (this.hideTimeout) clearTimeout(this.hideTimeout);
+                        e.preventDefault();
+                        this.active = true;
+                        this.id = e.pointerId;
+                        this.baseX = e.clientX;
+                        this.baseY = e.clientY;
+                        vjBase.style.left = (this.baseX - this.baseSize / 2) + 'px';
+                        vjBase.style.top = (this.baseY - this.baseSize / 2) + 'px';
+                        vjBase.style.display = 'flex';
+                        setTimeout(() => { vjBase.style.opacity = '1'; }, 10);
+                        move(e);
+                    };
+
+                    const move = (e) => {
+                        if (!this.active || e.pointerId !== this.id) return;
+                        e.preventDefault();
+                        const dx = e.clientX - this.baseX,
+                            dy = e.clientY - this.baseY,
+                            L = Math.hypot(dx, dy),
+                            k = L > this.dead ? Math.min(this.max, L) / L : 0;
+                        this.tx = (dx * k) / this.max;
+                        this.ty = (dy * k) / this.max;
+                        vjKnob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+                    };
+
+                    const up = (e) => {
+                        if (!this.active || e.pointerId !== this.id) return;
+                        e.preventDefault();
+                        this.active = false;
+                        this.id = null;
+                        this.tx = this.ty = 0;
+                        vjBase.style.opacity = '0';
+                        vjKnob.style.transform = 'translate(0px,0px)';
+                        this.hideTimeout = setTimeout(() => { vjBase.style.display = 'none'; }, 150);
+                    };
+
+                    window.addEventListener('pointerdown', down, { passive: false });
+                    window.addEventListener('pointermove', move, { passive: false });
+                    window.addEventListener('pointerup', up, { passive: false });
+                    window.addEventListener('pointercancel', up, { passive: false });
+                }
+
+                FloatingVJoy.prototype.update = function () {
+                    return { x: this.tx, y: this.ty };
+                };
+
+                // =================== Phaser Scene ===================
+                const Scene = new Phaser.Class({
+                    Extends: Phaser.Scene,
+                    initialize: function () {
+                        Phaser.Scene.call(this, 's');
+                        this.started = false;
+                        this.nextLeft = true;
+                        this.lastSpecialScore = 0;
+                        this.playerSpeedBoost = 1.0;
+                        this.comboCount = 1;
+                        this.comboTimer = 0;
+                        this.comboDuration = 3000;
+                        this.healthRegen = 0;
+                        this.lastRegenTime = 0;
+                        this.activeSpeechBubbles = [];
+                        this.lastDirection = 'right';
+                        this.pngFramesLoadedCount = 0;
+                        this.isMoving = false; // Hareket durumu takibi
+                    },
+
+                    preload: function () {
+                        window.__scene = this;
+                        console.log('Preload başladı...');
+                        this.createFallbackTextures();
+                    },
+
+                    create: function () {
+                        console.log('Create başladı...');
+
+                        this.PAD = Math.floor(Math.min(this.scale.width, this.scale.height) * 0.06);
+                        this.physics.world.setBounds(this.PAD, this.PAD, this.scale.width - 2 * this.PAD, this.scale.height - 2 * this.PAD);
+
+                        // Animasyonu oluştur - başlangıçta fallback kullan
+                        this.createPlayerAnimation(false);
+
+                        this.normal = this.add.group();
+                        this.zombie = this.add.group();
+                        this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT');
+
+                        this.score = 0;
+                        this.best = Number(localStorage.getItem('bestScore') || 0);
+                        this.level = 1;
+                        this.collectedInLevel = 0;
+                        this.maxHP = PLAYER.HP;
+                        this.playerDash = PLAYER.DASH;
+                        this.flatDR = 0;
+                        this.shockRing = false;
+                        this.punch = { ...PUNCH_BASE };
+                        this.lastPunch = 0;
+
+                        this.createPunchFX();
+                        this.vjoy = new FloatingVJoy();
+
+                        this.setupLevel(this.level);
+                        this.started = true;
+                        this.updateObjectiveHUD();
+                        this.updateComboHUD();
+
+
+
+                        this.time.delayedCall(1000, () => {
+                            this.showSpeechBubble("BAŞLAYALIIMMM kesin kaybedeceksin", this.player);
+                        });
+                    },
+
+                    // Fallback texture oluşturma
+                    createFallbackTextures: function () {
+                        for (let i = 0; i < 8; i++) {
+                            const graphics = this.add.graphics();
+
+                            const t = i / 8;
+                            const bounce = Math.sin(t * Math.PI * 2) * 3;
+                            const blink = (i % 8) === 4;
+                            const headY = 32 + bounce;
+
+                            graphics.fillStyle(0x000000, 0.3);
+                            graphics.fillEllipse(32, 50, 24, 10);
+
+                            graphics.fillStyle(0xff69b4, 1);
+                            graphics.fillCircle(32, headY, 20);
+
+                            graphics.fillStyle(0xff69b4, 1);
+                            graphics.fillTriangle(18, headY - 15, 24, headY - 28, 28, headY - 12);
+                            graphics.fillTriangle(36, headY - 12, 40, headY - 28, 46, headY - 15);
+
+                            if (blink) {
+                                graphics.fillStyle(0x000000, 1);
+                                graphics.fillRect(24, headY - 5, 6, 2);
+                                graphics.fillRect(34, headY - 5, 6, 2);
+                            } else {
+                                graphics.fillStyle(0x000000, 1);
+                                graphics.fillCircle(26, headY - 5, 3);
+                                graphics.fillCircle(38, headY - 5, 3);
+                                graphics.fillStyle(0xffffff, 1);
+                                graphics.fillCircle(25, headY - 6, 1);
+                                graphics.fillCircle(37, headY - 6, 1);
+                            }
+
+                            graphics.fillStyle(0x000000, 1);
+                            graphics.fillCircle(32, headY + 3, 2);
+
+                            graphics.lineStyle(2, 0x000000, 1);
+                            graphics.beginPath();
+                            graphics.moveTo(22, headY + 2);
+                            graphics.lineTo(16, headY);
+                            graphics.strokePath();
+                            graphics.beginPath();
+                            graphics.moveTo(22, headY + 4);
+                            graphics.lineTo(15, headY + 4);
+                            graphics.strokePath();
+                            graphics.beginPath();
+                            graphics.moveTo(22, headY + 6);
+                            graphics.lineTo(16, headY + 8);
+                            graphics.strokePath();
+                            graphics.beginPath();
+                            graphics.moveTo(42, headY + 2);
+                            graphics.lineTo(48, headY);
+                            graphics.strokePath();
+                            graphics.beginPath();
+                            graphics.moveTo(42, headY + 4);
+                            graphics.lineTo(49, headY + 4);
+                            graphics.strokePath();
+                            graphics.beginPath();
+                            graphics.moveTo(42, headY + 6);
+                            graphics.lineTo(48, headY + 8);
+                            graphics.strokePath();
+
+                            graphics.generateTexture(`fallback${i}`, 64, 64);
+                            graphics.destroy();
+                        }
+
+                        // Fallback idle texture oluştur
+                        const idleGraphics = this.add.graphics();
+                        idleGraphics.fillStyle(0xff69b4, 1);
+                        idleGraphics.fillCircle(32, 32, 20);
+                        idleGraphics.fillStyle(0x000000, 1);
+                        idleGraphics.fillCircle(26, 28, 3);
+                        idleGraphics.fillCircle(38, 28, 3);
+                        idleGraphics.fillStyle(0xffffff, 1);
+                        idleGraphics.fillCircle(25, 27, 1);
+                        idleGraphics.fillCircle(37, 27, 1);
+                        idleGraphics.fillStyle(0x000000, 1);
+                        idleGraphics.fillCircle(32, 36, 2);
+                        idleGraphics.generateTexture(`idleFallback`, 64, 64);
+                        idleGraphics.destroy();
+                    },
+
+                    // Player animasyonunu oluştur - IDLE FRAME EKLENDİ
+                    createPlayerAnimation: function (usePNG) {
+                        const walkFrames = [];
+
+                        if (usePNG) {
+                            let pngCount = 0;
+                            for (let i = 0; i < 8; i++) {
+                                if (this.textures.exists(`frame${i}`)) {
+                                    walkFrames.push({ key: `frame${i}` });
+                                    pngCount++;
+                                } else {
+                                    walkFrames.push({ key: `fallback${i}` });
+                                }
+                            }
+                            console.log(`PNG animasyonu kullanılıyor - ${pngCount} frame yüklendi`);
+                        } else {
+                            for (let i = 0; i < 8; i++) {
+                                walkFrames.push({ key: `fallback${i}` });
+                            }
+                            console.log('Fallback animasyon kullanılıyor');
+                        }
+
+                        if (this.anims.exists('player_walk')) {
+                            this.anims.remove('player_walk');
+                        }
+
+                        // Yürüme animasyonu
+                        this.anims.create({
+                            key: 'player_walk',
+                            frames: walkFrames,
+                            frameRate: 10,
+                            repeat: -1
+                        });
+
+                        // Idle texture'ını belirle
+                        let idleTexture;
+                        if (usePNG && this.textures.exists('idleFrame')) {
+                            idleTexture = 'idleFrame';
+                            console.log('Özel idle frame kullanılıyor');
+                        } else {
+                            idleTexture = 'idleFallback';
+                            console.log('Fallback idle frame kullanılıyor');
+                        }
+
+                        const initialTexture = usePNG && this.textures.exists('frame0') ? 'frame0' : 'fallback0';
+
+                        if (this.player) {
+                            const wasX = this.player.x, wasY = this.player.y;
+                            const wasHP = this.player.hp;
+                            this.player.destroy();
+                            this.player = this.physics.add.sprite(wasX, wasY, initialTexture).setDisplaySize(58, 58);
+                            this.player.setCircle(PLAYER.R).setCollideWorldBounds(true);
+                            this.player.hp = wasHP || PLAYER.HP;
+                            this.player.idleTexture = idleTexture; // Idle texture'ını kaydet
+                            this.player.setTexture(idleTexture); // Başlangıçta idle texture'ını kullan
+                            this.isMoving = false;
+                        } else {
+                            this.player = this.physics.add.sprite(this.scale.width / 2, this.scale.height / 2, initialTexture).setDisplaySize(58, 58);
+                            this.player.setCircle(PLAYER.R).setCollideWorldBounds(true);
+                            this.player.hp = PLAYER.HP;
+                            this.player.idleTexture = idleTexture; // Idle texture'ını kaydet
+                            this.player.setTexture(idleTexture); // Başlangıçta idle texture'ını kullan
+                            this.isMoving = false;
+                        }
+                    },
+
+                    // Update fonksiyonuna hareket durumu kontrolü eklendi
+                    update: function (t, dtms) {
+                        const dt = dtms / 1000;
+                        if (!this.started) return;
+
+                        let vx = 0, vy = 0;
+                        if (this.vjoy && this.vjoy.active) {
+                            const j = this.vjoy.update();
+                            vx = j.x;
+                            vy = j.y;
+                        } else {
+                            vx = (this.keys.A.isDown || this.keys.LEFT.isDown ? -1 : 0) + (this.keys.D.isDown || this.keys.RIGHT.isDown ? 1 : 0);
+                            vy = (this.keys.W.isDown || this.keys.UP.isDown ? -1 : 0) + (this.keys.S.isDown || this.keys.DOWN.isDown ? 1 : 0);
+                            if (vx !== 0 || vy !== 0) {
+                                const L = Math.hypot(vx, vy) || 1;
+                                vx /= L;
+                                vy /= L;
+                            }
+                        }
+
+                        // HAREKET DURUMU KONTROLÜ - IDLE FRAME KULLANIMI
+                        const isNowMoving = Math.abs(vx) > 0.1 || Math.abs(vy) > 0.1;
+
+                        if (isNowMoving && !this.isMoving) {
+                            // Hareket başladı - walk animasyonuna geç
+                            this.player.play('player_walk');
+                            this.isMoving = true;
+                        } else if (!isNowMoving && this.isMoving) {
+                            // Hareket durdu - idle texture'ına geç
+                            this.player.stop(); // Animasyonu durdur
+                            this.player.setTexture(this.player.idleTexture); // Idle texture'ını set et
+                            this.isMoving = false;
+                        }
+
+                        this.updatePlayerDirection(vx);
+
+                        const speed = PLAYER.SPEED * this.playerSpeedBoost;
+                        this.player.setVelocity(vx * speed, vy * speed);
+
+                        if (this.comboCount > 1 && t > this.comboTimer) {
+                            this.comboCount = 1;
+                            this.updateComboHUD();
+                        }
+
+                        if (this.healthRegen > 0 && t - this.lastRegenTime > 1000) {
+                            this.player.hp = Math.min(this.maxHP, this.player.hp + this.healthRegen);
+                            this.lastRegenTime = t;
+                            this.updateHUD();
+                        }
+
+                        this.updateNormals(dt);
+                        this.updateZombies(t, dt);
+                        this.tryPunch(t);
+
+                        this.updateSpeechBubbles();
+                        this.updateEnemyPulseEffects();
+
+                        this.updateHUD();
+                        if (this.player.hp <= 0) this.gameOver();
+                    },
+
+                    updatePlayerDirection: function (vx) {
+                        if (vx > 0) {
+                            this.player.setFlipX(false);
+                            this.lastDirection = 'right';
+                        } else if (vx < 0) {
+                            this.player.setFlipX(true);
+                            this.lastDirection = 'left';
+                        }
+                    },
+
+                    setupLevel(lv) {
+                        const row = LV_TABLE[Math.min(lv - 1, LV_TABLE.length - 1)];
+                        this.targetHearts = LEVEL_TARGET;
+                        this.LIMITS = { MAX_NORMAL: row[1], MAX_ZOMBIE: row[2] };
+                        this.normal.clear(true, true);
+                        this.zombie.clear(true, true);
+
+                        for (let i = 0; i < Math.min(row[1], 12); i++) this.spawnNormal();
+                        for (let j = 0; j < row[2]; j++) this.spawnZombie(true);
+
+                        if (this.spawnN) this.spawnN.remove(false);
+                        if (this.spawnZ) this.spawnZ.remove(false);
+
+                        this.spawnN = this.time.addEvent({
+                            delay: 850,
+                            loop: true,
+                            callback: () => {
+                                if (this.normal.countActive(true) < this.LIMITS.MAX_NORMAL) this.spawnNormal();
+                            }
+                        });
+
+                        this.spawnZ = this.time.addEvent({
+                            delay: 1700 - Math.min((lv - 1) * 90, 900),
+                            loop: true,
+                            callback: () => {
+                                if (this.zombie.countActive(true) < this.LIMITS.MAX_ZOMBIE) this.spawnZombie(true);
+                            }
+                        });
+
+                        this.collectedInLevel = 0;
+                        this.updateObjectiveHUD();
+
+                        this.showSpeechBubble(`Seviye ${this.level}! 🎯`, this.player);
+                    },
+
+                    levelUp() {
+                        this.level++;
+                        HEARTS.ZOMBIE.BASE += 2;
+                        HEARTS.ZOMBIE.PURSUIT += 1.4;
+                        this.openPerkChoice();
+                    },
+
+                    openPerkChoice() {
+                        this.scene.pause();
+                        levelUp.style.display = 'grid';
+                        perksEl.innerHTML = '';
+                        let first = null;
+
+                        Phaser.Utils.Array.Shuffle(ALL_PERKS.slice()).slice(0, 4).forEach(p => {
+                            const b = document.createElement('button');
+                            b.className = 'perk';
+                            b.innerHTML = `<div>${p.name}</div><div>${p.desc}</div>`;
+                            b.addEventListener('pointerdown', (e) => {
+                                e.preventDefault();
+                                p.apply(this);
+                                levelUp.style.display = 'none';
+                                this.scene.resume();
+                                this.setupLevel(this.level);
+                                this.showSpeechBubble(p.name + ' + 💪', this.player);
+                            });
+                            perksEl.appendChild(b);
+                            if (!first) first = b;
+                        });
+
+                        if (first) setTimeout(() => first.focus(), 100);
+                    },
+
+                    updateObjectiveHUD() {
+                        eLVL.textContent = `Lv: ${this.level} · Hedef: ${this.collectedInLevel}/${this.targetHearts}`;
+                    },
+
+                    updateComboHUD() {
+                        eCombo.textContent = `Kombo: ${this.comboCount}x`;
+                        if (this.comboCount > 1) {
+                            eCombo.style.color = 'var(--gold)';
+                        } else {
+                            eCombo.style.color = '';
+                        }
+                    },
+
+                    spawnNormal() {
+                        const p = this.PAD,
+                            s = this.scale,
+                            w = s.width - 2 * p,
+                            h = s.height - 2 * p,
+                            cx = s.width / 2,
+                            cy = s.height / 2;
+
+                        const x = Phaser.Math.Linear(cx, p + Math.random() * w, 0.35);
+                        const y = Phaser.Math.Linear(cy, p + Math.random() * h, 0.35);
+                        const emoji = Phaser.Utils.Array.GetRandom(HEARTS.NORMAL.COLORS);
+                        const t = this.add.text(x, y, emoji, { fontSize: (26 + Math.floor(Math.random() * 6)) + 'px' }).setOrigin(.5);
+
+                        t.base = HEARTS.NORMAL.BASE + (Math.random() * 30 - 15);
+                        t.jitter = HEARTS.NORMAL.JITTER;
+                        t.panicR = HEARTS.NORMAL.PANIC_R;
+                        t.panicM = HEARTS.NORMAL.PANIC_MULT;
+                        t.radius = 14;
+                        t.phase = Math.random() * Math.PI * 2;
+                        t.boost = Phaser.Math.FloatBetween(HEARTS.NORMAL.BOOST_MIN, HEARTS.NORMAL.BOOST_MAX);
+                        t.nextBoost = performance.now() + HEARTS.NORMAL.BOOST_T * (0.6 + Math.random() * 1.2);
+                        t.tx = Phaser.Math.Linear(cx, p + Math.random() * w, 0.35);
+                        t.ty = Phaser.Math.Linear(cy, p + Math.random() * h, 0.35);
+                        t.repickAt = performance.now() + 1200 + Math.random() * 1400;
+                        this.normal.add(t);
+                    },
+
+                    updateNormals(dt) {
+                        const px = this.player.x,
+                            py = this.player.y,
+                            cx = this.scale.width / 2,
+                            cy = this.scale.height / 2;
+                        const p = this.PAD,
+                            s = this.scale,
+                            Lx = p,
+                            Rx = s.width - p,
+                            Ty = p,
+                            By = s.height - p;
+
+                        this.normal.children.iterate(h => {
+                            if (!h) return;
+
+                            if (performance.now() > h.repickAt || Phaser.Math.Distance.Between(h.x, h.y, h.tx, h.ty) < 36) {
+                                h.tx = Phaser.Math.Linear(cx, Lx + Math.random() * (Rx - Lx), 0.3);
+                                h.ty = Phaser.Math.Linear(cy, Ty + Math.random() * (By - Ty), 0.3);
+                                h.repickAt = performance.now() + 1200 + Math.random() * 1400;
+                            }
+
+                            if (performance.now() > h.nextBoost) {
+                                h.boost = Phaser.Math.FloatBetween(HEARTS.NORMAL.BOOST_MIN, HEARTS.NORMAL.BOOST_MAX);
+                                h.nextBoost = performance.now() + HEARTS.NORMAL.BOOST_T * (0.6 + Math.random() * 1.2);
+                            }
+
+                            const dx = h.x - px,
+                                dy = h.y - py,
+                                d = Math.hypot(dx, dy) || 1e-3;
+                            let vx = (dx / d) * (h.base * h.boost),
+                                vy = (dy / d) * (h.base * h.boost);
+
+                            if (d < h.panicR) {
+                                vx *= h.panicM;
+                                vy *= h.panicM;
+                            }
+
+                            h.phase += dt * 0.8;
+                            const cdx = cx - h.x,
+                                cdy = cy - h.y,
+                                cl = Math.hypot(cdx, cdy) || 1;
+                            vx += (cdx / cl) * HEARTS.NORMAL.CENTER_PULL + Math.cos(h.phase) * 20;
+                            vy += (cdy / cl) * HEARTS.NORMAL.CENTER_PULL + Math.sin(h.phase) * 20;
+
+                            const gdx = h.tx - h.x,
+                                gdy = h.ty - h.y,
+                                gl = Math.hypot(gdx, gdy) || 1;
+                            vx += (gdx / gl) * 46;
+                            vy += (gdy / gl) * 46;
+
+                            const pad = 40;
+                            if (h.x < Lx + pad) vx += HEARTS.NORMAL.WALL_PUSH;
+                            if (h.x > Rx - pad) vx -= HEARTS.NORMAL.WALL_PUSH;
+                            if (h.y < Ty + pad) vy += HEARTS.NORMAL.WALL_PUSH;
+                            if (h.y > By - pad) vy -= HEARTS.NORMAL.WALL_PUSH;
+
+                            vx += (Math.random() * 2 - 1) * h.jitter;
+                            vy += (Math.random() * 2 - 1) * h.jitter;
+                            h.x += vx * dt;
+                            h.y += vy * dt;
+
+                            if (h.x < p + 12) h.x = p + 12;
+                            if (h.y < p + 12) h.y = p + 12;
+                            if (h.x > s.width - p - 12) h.x = s.width - p - 12;
+                            if (h.y > s.height - p - 12) h.y = s.height - p - 12;
+
+                            const dx2 = px - h.x,
+                                dy2 = py - h.y;
+                            if (dx2 * dx2 + dy2 * dy2 <= (PLAYER.R + h.radius) * (PLAYER.R + h.radius)) {
+                                h.destroy();
+
+                                const now = performance.now();
+                                if (now - this.comboTimer < this.comboDuration) {
+                                    this.comboCount++;
+                                } else {
+                                    this.comboCount = 1;
+                                }
+                                this.comboTimer = now + this.comboDuration;
+                                this.updateComboHUD();
+
+                                if (this.comboCount > 1) {
+                                    const comboText = this.add.text(this.player.x, this.player.y - 60, `${this.comboCount}x COMBO!`, {
+                                        fontSize: '16px',
+                                        color: '#FFD700',
+                                        fontStyle: 'bold'
+                                    }).setOrigin(0.5);
+                                    this.tweens.add({
+                                        targets: comboText,
+                                        y: comboText.y - 40,
+                                        alpha: 0,
+                                        duration: 1000,
+                                        ease: 'Power2',
+                                        onComplete: () => comboText.destroy()
+                                    });
+                                }
+
+                                this.score += 1 * this.comboCount;
+                                this.collectedInLevel++;
+
+                                this.checkSpecialMessages();
+
+                                if (this.collectedInLevel >= this.targetHearts) this.levelUp();
+                                this.updateObjectiveHUD();
+                            }
+                        }, this);
+                    },
+
+                    spawnZombie(scaleWithLevel) {
+                        const pos = this.edge(),
+                            lv = this.level - 1;
+                        const eIcon = Phaser.Utils.Array.GetRandom(HEARTS.ZOMBIE.EMOJIS);
+
+                        const t = this.add.text(pos.x, pos.y, eIcon, {
+                            fontSize: '32px',
+                            color: '#ff0000',
+                            stroke: '#000000',
+                            strokeThickness: 3,
+                            shadow: {
+                                offsetX: 2,
+                                offsetY: 2,
+                                color: '#000000',
+                                blur: 4,
+                                stroke: true,
+                                fill: true
+                            }
+                        }).setOrigin(.5);
+
+                        const aura = this.add.circle(pos.x, pos.y, 36, 0xff0000, 0.3);
+                        this.zombie.add(aura);
+
+                        this.tweens.add({
+                            targets: [t, aura],
+                            scale: { from: 1.3, to: 1 },
+                            duration: 400,
+                            ease: 'Elastic.out'
+                        });
+
+                        t.emoji = eIcon;
+                        const brute = Math.random() < 0.15 + lv * 0.01;
+                        t.hp = (brute ? 110 : 70) + (scaleWithLevel ? lv * 9 : 0);
+                        t.base = (brute ? HEARTS.ZOMBIE.BASE - 14 : HEARTS.ZOMBIE.BASE) + lv * 1.6;
+                        t.purs = (brute ? HEARTS.ZOMBIE.PURSUIT - 6 : HEARTS.ZOMBIE.PURSUIT) + lv * 1.4;
+                        t.atkR = HEARTS.ZOMBIE.ATK_R + (brute ? 8 : 0);
+                        t.atkCd = Math.max(340, HEARTS.ZOMBIE.ATK_CD - lv * 12);
+                        t.dmg = HEARTS.ZOMBIE.DMG + Math.floor(lv / 3);
+                        t.lastAtk = 0;
+                        t.radius = 16;
+                        t.stunUntil = 0;
+                        t.kvx = 0;
+                        t.kvy = 0;
+                        t.kvT = 0;
+                        t.aura = aura;
+                        t.pulseTimer = 0;
+
+                        this.zombie.add(t);
+                    },
+
+                    updateZombies(t, dt) {
+                        const px = this.player.x,
+                            py = this.player.y;
+                        this.zombie.children.iterate(z => {
+                            if (!z || typeof z.x === 'undefined') return;
+
+                            if (z.aura) {
+                                z.aura.x = z.x;
+                                z.aura.y = z.y;
+                            }
+
+                            if (z.kvT > 0) {
+                                z.x += z.kvx * dt;
+                                z.y += z.kvy * dt;
+                                z.kvx *= 0.9;
+                                z.kvy *= 0.9;
+                                z.kvT -= dt;
+                            }
+
+                            const stunned = t < z.stunUntil;
+                            const dx = px - z.x,
+                                dy = py - z.y,
+                                d = Math.hypot(dx, dy) || 1e-3;
+                            const nx = dx / d,
+                                ny = dy / d,
+                                v = (z.base + z.purs) * (stunned ? 0.25 : 1);
+                            z.x += nx * v * dt;
+                            z.y += ny * v * dt;
+
+                            if (!stunned && d < z.atkR && t - z.lastAtk > z.atkCd) {
+                                z.lastAtk = t;
+                                this.damage(z.dmg);
+                            }
+                        }, this);
+                    },
+
+                    updateEnemyPulseEffects() {
+                        const now = performance.now();
+                        this.zombie.children.iterate(z => {
+                            if (!z || !z.aura) return;
+
+                            if (now - z.pulseTimer > 2000) {
+                                z.pulseTimer = now;
+
+                                this.tweens.add({
+                                    targets: z.aura,
+                                    scaleX: { from: 1, to: 1.4 },
+                                    scaleY: { from: 1, to: 1.4 },
+                                    alpha: { from: 0.3, to: 0.7 },
+                                    duration: 300,
+                                    yoyo: true,
+                                    ease: 'Sine.easeInOut'
+                                });
+
+                                this.tweens.add({
+                                    targets: z,
+                                    scaleX: { from: 1, to: 1.2 },
+                                    scaleY: { from: 1, to: 1.2 },
+                                    duration: 200,
+                                    yoyo: true,
+                                    ease: 'Back.easeOut'
+                                });
+                            }
+                        }, this);
+                    },
+
+                    tryPunch(t) {
+                        if (t - this.lastPunch < this.punch.COOLDOWN) return;
+
+                        let hit = null,
+                            bestD = 1e9;
+                        this.zombie.children.iterate(z => {
+                            const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, z.x, z.y);
+                            if (d < this.punch.RANGE && d < bestD) {
+                                bestD = d;
+                                hit = z;
+                            }
+                        });
+
+                        if (!hit) return;
+
+                        const dx = hit.x - this.player.x,
+                            dy = hit.y - this.player.y,
+                            L = Math.hypot(dx, dy) || 1;
+                        const dir = { x: dx / L, y: dy / L };
+
+                        const dash = PLAYER.DASH * (this.playerDash ? this.playerDash / PLAYER.DASH : 1);
+                        this.player.body.velocity.x += dir.x * dash;
+                        this.player.body.velocity.y += dir.y * dash;
+                        this.time.delayedCall(PLAYER.DASH_TIME, () => {
+                            this.player.body.velocity.x *= 0.6;
+                            this.player.body.velocity.y *= 0.6;
+                        });
+
+                        this.punchFX(dir);
+
+                        const arc = this.punch.ARCRAD,
+                            range = this.punch.RANGE;
+                        this.zombie.children.iterate(z => {
+                            if (!z) return;
+                            const vx = z.x - this.player.x,
+                                vy = z.y - this.player.y,
+                                d = Math.hypot(vx, vy);
+                            if (d > range) return;
+                            const ang = Math.acos((vx * dir.x + vy * dir.y) / (d || 1));
+                            if (ang <= arc) {
+                                z.hp -= this.punch.DMG;
+                                z.kvx = (vx / d) * this.punch.KNOCK;
+                                z.kvy = (vy / d) * this.punch.KNOCK;
+                                z.kvT = 0.18;
+                                z.stunUntil = t + this.punch.STUN;
+
+                                this.tweens.add({
+                                    targets: [z, z.aura],
+                                    alpha: { from: 0.3, to: 1 },
+                                    duration: 100,
+                                    yoyo: true,
+                                    ease: 'Power1'
+                                });
+
+                                if (z.hp <= 0) {
+                                    if (z.aura) {
+                                        z.aura.destroy();
+                                    }
+
+                                    z.destroy();
+
+                                    const now = performance.now();
+                                    if (now - this.comboTimer < this.comboDuration) {
+                                        this.comboCount++;
+                                    } else {
+                                        this.comboCount = 1;
+                                    }
+                                    this.comboTimer = now + this.comboDuration;
+                                    this.updateComboHUD();
+
+                                    if (this.comboCount > 1) {
+                                        const comboText = this.add.text(this.player.x, this.player.y - 60, `${this.comboCount}x COMBO!`, {
+                                            fontSize: '16px',
+                                            color: '#FFD700',
+                                            fontStyle: 'bold'
+                                        }).setOrigin(0.5);
+                                        this.tweens.add({
+                                            targets: comboText,
+                                            y: comboText.y - 40,
+                                            alpha: 0,
+                                            duration: 1000,
+                                            ease: 'Power2',
+                                            onComplete: () => comboText.destroy()
+                                        });
+                                    }
+
+                                    this.score += 2 * this.comboCount;
+                                    this.checkSpecialMessages();
+                                }
+                            }
+                        });
+                        this.lastPunch = t;
+                    },
+
+                    checkSpecialMessages() {
+                        for (const [threshold, message] of Object.entries(SPECIAL_MESSAGES)) {
+                            if (this.score >= parseInt(threshold) && this.lastSpecialScore < parseInt(threshold)) {
+                                this.showSpeechBubble(message, this.player);
+                                this.lastSpecialScore = parseInt(threshold);
+                                break;
+                            }
+                        }
+                    },
+
+                    showSpeechBubble(text, target) {
+                        const bubble = document.createElement('div');
+                        bubble.className = 'speech-bubble';
+                        bubble.textContent = text;
+                        document.body.appendChild(bubble);
+
+                        const bubbleObj = {
+                            element: bubble,
+                            target: target,
+                            createdAt: performance.now(),
+                            id: Math.random().toString(36).substring(2, 9)
+                        };
+
+                        this.activeSpeechBubbles.push(bubbleObj);
+
+                        setTimeout(() => {
+                            bubble.classList.add('visible');
+                        }, 10);
+
+                        // Pozisyonu hemen ayarla
+                        this.updateSingleSpeechBubble(bubbleObj);
+
+                        setTimeout(() => {
+                            bubble.style.transition = 'opacity 0.5s ease';
+                            bubble.classList.remove('visible');
+
+                            setTimeout(() => {
+                                if (bubble.parentNode) {
+                                    bubble.parentNode.removeChild(bubble);
+                                }
+                                const index = this.activeSpeechBubbles.findIndex(b => b.id === bubbleObj.id);
+                                if (index !== -1) {
+                                    this.activeSpeechBubbles.splice(index, 1);
+                                }
+                            }, 500);
+                        }, 2000);
+                    },
+
+                    // Tek bir konuşma balonunun pozisyonunu güncelle
+                    updateSingleSpeechBubble(bubbleObj) {
+                        if (!bubbleObj.target) return;
+
+                        const camera = this.cameras.main;
+                        const worldPoint = camera.getWorldPoint(bubbleObj.target.x, bubbleObj.target.y);
+
+                        // Oyuncunun üstünde (y ekseninde daha yukarı)
+                        bubbleObj.element.style.left = worldPoint.x + 'px';
+                        bubbleObj.element.style.top = (worldPoint.y - 80) + 'px'; // -80 yerine -60 veya daha fazla
+                    },
+
+                    // Tüm konuşma balonlarını güncelle
+                    updateSpeechBubbles() {
+                        const camera = this.cameras.main;
+
+                        this.activeSpeechBubbles.forEach(bubbleObj => {
+                            if (!bubbleObj.target) return;
+
+                            const worldPoint = camera.getWorldPoint(bubbleObj.target.x, bubbleObj.target.y);
+
+                            // Oyuncunun üstünde görünecek şekilde ayarla
+                            bubbleObj.element.style.left = worldPoint.x + 'px';
+                            bubbleObj.element.style.top = (worldPoint.y - 80) + 'px'; // Daha yukarı
+                        });
+                    },
+
+                    createPunchFX() {
+                        const BASE = 0xff69b4,
+                            LIGHT = 0xffb6c1,
+                            CORE = 0xffffff;
+
+                        const mk = (key, w, h, draw) => {
+                            if (this.textures.exists(key)) return;
+                            const g = this.add.graphics();
+                            draw(g, w, h);
+                            g.generateTexture(key, w, h);
+                            g.destroy();
+                        };
+
+                        mk('fxGlow', 64, 64, (g, w, h) => {
+                            const cx = w / 2, cy = h / 2, r = w / 2;
+                            for (let i = 5; i >= 1; i--) {
+                                g.fillStyle(BASE, 0.18 + i * 0.08);
+                                g.fillCircle(cx, cy, r * (i / 5));
+                            }
+                            g.fillStyle(CORE, 0.9);
+                            g.fillCircle(cx, cy, r * 0.18);
+                        });
+
+                        mk('fxRing', 128, 128, (g, w, h) => {
+                            const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.36;
+                            g.lineStyle(8, BASE, 1);
+                            g.strokeCircle(cx, cy, r);
+                            g.lineStyle(2, CORE, 0.9);
+                            g.strokeCircle(cx, cy, r * 0.7);
+                        });
+
+                        mk('fxSpark', 3, 20, (g, w, h) => {
+                            g.fillStyle(CORE, 1);
+                            g.fillRect(w / 2 - 1, 0, 2, h);
+                            g.fillStyle(BASE, 1);
+                            g.fillRect(w / 2 - 1, 0, 2, h * 0.7);
+                        });
+
+                        mk('fxSlash', 170, 70, (g, w, h) => {
+                            g.fillStyle(BASE, 0.95);
+                            g.beginPath();
+                            g.moveTo(16, h / 2);
+                            g.lineTo(w - 8, h * 0.18);
+                            g.lineTo(w - 8, h * 0.82);
+                            g.closePath();
+                            g.fillPath();
+                            g.fillStyle(CORE, 0.7);
+                            g.beginPath();
+                            g.moveTo(22, h / 2);
+                            g.lineTo(w - 26, h * 0.32);
+                            g.lineTo(w - 26, h * 0.68);
+                            g.closePath();
+                            g.fillPath();
+                        });
+
+                        mk('fxShard', 18, 24, (g, w, h) => {
+                            g.fillStyle(LIGHT, 1);
+                            g.beginPath();
+                            g.moveTo(w / 2, 0);
+                            g.lineTo(w, h / 2);
+                            g.lineTo(w / 2, h);
+                            g.lineTo(0, h / 2);
+                            g.closePath();
+                            g.fillPath();
+                            g.lineStyle(1, CORE, 0.8);
+                            g.strokePath();
+                        });
+                    },
+
+                    punchFX(dir) {
+                        this.cameras.main.shake(80, 0.004);
+                        const ADD = Phaser.BlendModes.ADD;
+                        const px = this.player.x, py = this.player.y;
+                        const x = px + dir.x * (PLAYER.R + 10), y = py + dir.y * (PLAYER.R + 10);
+                        const ang = Math.atan2(dir.y, dir.x), deg = Phaser.Math.RadToDeg(ang);
+                        const palette = [0xff69b4, 0xff1493, 0xffb6c1, 0xffc0cb, 0xffe4e1];
+                        const tint = Phaser.Utils.Array.GetRandom(palette);
+
+                        if (this._fxIndex == null) this._fxIndex = Phaser.Math.Between(0, 4);
+                        else this._fxIndex = (this._fxIndex + 1) % 5;
+
+                        const perp = { x: -dir.y, y: dir.x };
+
+                        const addRing = (cx, cy, scale0 = 0.3, scale1 = 1.85, dur = 220) => {
+                            const ring = this.add.image(cx, cy, 'fxRing').setBlendMode(ADD).setTint(tint).setScale(scale0).setAlpha(0.9);
+                            this.tweens.add({
+                                targets: ring,
+                                x: cx + dir.x * 20,
+                                y: cy + dir.y * 20,
+                                scale: scale1,
+                                alpha: 0,
+                                duration: dur,
+                                ease: 'Cubic.easeOut',
+                                onComplete: () => ring.destroy()
+                            });
+                        };
+
+                        switch (this._fxIndex) {
+                            case 0: {
+                                addRing(x, y);
+                                const count = 16;
+                                for (let i = 0; i < count; i++) {
+                                    const a = Phaser.Math.DegToRad(Phaser.Math.Between(deg - 100, deg + 100)),
+                                        sp = Phaser.Math.Between(140, 240),
+                                        life = Phaser.Math.Between(220, 320);
+                                    const bx = Math.cos(a),
+                                        by = Math.sin(a);
+                                    const p = this.add.image(x + dir.x * 20, y + dir.y * 20, 'fxGlow').setBlendMode(ADD).setTint(tint).setScale(0.5).setAlpha(0.9);
+                                    this.tweens.add({
+                                        targets: p,
+                                        x: p.x + bx * (sp * life / 1000),
+                                        y: p.y + by * (sp * life / 1000),
+                                        alpha: 0,
+                                        scale: 0,
+                                        duration: life,
+                                        ease: 'Quad.easeOut',
+                                        onComplete: () => p.destroy()
+                                    });
+                                }
+                                break;
+                            }
+                            case 1: {
+                                const slash = this.add.image(x, y, 'fxSlash').setBlendMode(ADD).setTint(tint).setOrigin(0.08, 0.5).setRotation(ang).setScale(0.8).setAlpha(0.95);
+                                this.tweens.add({
+                                    targets: slash,
+                                    x: x + dir.x * 90,
+                                    y: y + dir.y * 90,
+                                    scale: 1.1,
+                                    alpha: 0,
+                                    duration: 160,
+                                    ease: 'Cubic.easeOut',
+                                    onComplete: () => slash.destroy()
+                                });
+                                break;
+                            }
+                            case 2: {
+                                for (let i = 0; i < 6; i++) {
+                                    const d = 14 * i;
+                                    const dot = this.add.image(x + dir.x * d, y + dir.y * d, 'fxGlow').setBlendMode(ADD).setTint(tint).setScale(0.38 - i * 0.045).setAlpha(0.9 - i * 0.1).setRotation(ang + Phaser.Math.FloatBetween(-0.2, 0.2));
+                                    this.tweens.add({
+                                        targets: dot,
+                                        x: dot.x + dir.x * 50,
+                                        y: dot.y + dir.y * 50,
+                                        alpha: 0,
+                                        scale: 0,
+                                        duration: 200 + i * 14,
+                                        ease: 'Quad.easeOut',
+                                        onComplete: () => dot.destroy()
+                                    });
+                                }
+                                break;
+                            }
+                            case 3: {
+                                const c = Phaser.Math.Between(6, 8);
+                                for (let i = 0; i < c; i++) {
+                                    const off = Phaser.Math.FloatBetween(-16, 16),
+                                        dist = Phaser.Math.Between(60, 110);
+                                    const shard = this.add.image(x, y, 'fxShard').setBlendMode(ADD).setTint(tint).setScale(Phaser.Math.FloatBetween(0.7, 1.1)).setRotation(ang + Phaser.Math.FloatBetween(-0.4, 0.4));
+                                    this.tweens.add({
+                                        targets: shard,
+                                        x: x + dir.x * dist + perp.x * off,
+                                        y: y + dir.y * dist + perp.y * off,
+                                        alpha: 0,
+                                        rotation: shard.rotation + Phaser.Math.FloatBetween(-0.6, 0.6),
+                                        duration: Phaser.Math.Between(200, 280),
+                                        ease: 'Cubic.easeOut',
+                                        onComplete: () => shard.destroy()
+                                    });
+                                }
+                                break;
+                            }
+                            case 4: {
+                                const len = 110,
+                                    steps = 7,
+                                    step = len / steps;
+                                const g = this.add.graphics().setBlendMode(ADD).setAlpha(1);
+                                g.lineStyle(3, tint, 1);
+                                g.beginPath();
+                                g.moveTo(x, y);
+                                for (let i = 1; i <= steps; i++) {
+                                    const amp = 12 * (1 - i / steps);
+                                    const ox = perp.x * Phaser.Math.FloatBetween(-amp, amp);
+                                    const oy = perp.y * Phaser.Math.FloatBetween(-amp, amp);
+                                    g.lineTo(x + dir.x * step * i + ox, y + dir.y * step * i + oy);
+                                }
+                                g.strokePath();
+                                this.tweens.add({
+                                    targets: g,
+                                    alpha: 0,
+                                    duration: 140,
+                                    ease: 'Quad.easeOut',
+                                    onComplete: () => g.destroy()
+                                });
+                                const end = this.add.image(x + dir.x * len, y + dir.y * len, 'fxGlow').setBlendMode(ADD).setTint(tint).setScale(0.4).setAlpha(0.9);
+                                this.tweens.add({
+                                    targets: end,
+                                    alpha: 0,
+                                    scale: 0.9,
+                                    duration: 180,
+                                    onComplete: () => end.destroy()
+                                });
+                                break;
+                            }
+                        }
+
+                        const spark = this.add.image(x, y, 'fxSpark').setBlendMode(ADD).setTint(0xffffff).setRotation(ang).setAlpha(0.9).setScale(1);
+                        this.tweens.add({
+                            targets: spark,
+                            x: x + dir.x * 80,
+                            y: y + dir.y * 80,
+                            alpha: 0,
+                            duration: 160,
+                            ease: 'Quad.easeOut',
+                            onComplete: () => spark.destroy()
+                        });
+
+                        if (this.shockRing) {
+                            const sRing = this.add.image(x + dir.x * 24, y + dir.y * 24, 'fxRing').setBlendMode(ADD).setTint(0xffb6c1).setScale(0.25).setAlpha(0.75);
+                            this.tweens.add({
+                                targets: sRing,
+                                scale: 1.4,
+                                alpha: 0,
+                                duration: 220,
+                                onComplete: () => sRing.destroy()
+                            });
+                        }
+                    },
+
+                    damage(d) {
+                        d = Math.max(0, d - (this.flatDR || 0));
+                        this.player.hp = Math.max(0, this.player.hp - d);
+                        hitFlash.style.opacity = '1';
+                        setTimeout(() => hitFlash.style.opacity = '0', 120);
+
+                        if (d > 0) {
+                            this.showSpeechBubble(`-${d} 💔`, this.player);
+                        }
+
+                        this.comboCount = 1;
+                        this.updateComboHUD();
+                    },
+
+                    updateHUD() {
+                        if (this.score > this.best) {
+                            this.best = this.score;
+                            localStorage.setItem('bestScore', this.best);
+                        }
+                        eScore.textContent = `Skor: ${this.score} · Rekor: ${this.best}`;
+                        eHP.textContent = `Can: ${Math.round(this.player.hp)}/${this.maxHP}`;
+                        this.updateObjectiveHUD();
+                    },
+
+                    gameOver() {
+                        this.scene.pause();
+                        overScore.textContent = `Skor: ${this.score} · Rekor: ${this.best}`;
+                        const randomMessage = Phaser.Utils.Array.GetRandom(LOVE_MESSAGES);
+                        endMessage.textContent = randomMessage;
+                        over.style.display = 'grid';
+                    },
+
+                    makePlayerTex() {
+                        const r = PLAYER.R,
+                            g = this.add.graphics();
+                        g.fillStyle(0xffcfe0, 1).fillCircle(r + 4, r + 4, r);
+                        g.lineStyle(4, 0xff9bb3, 1).strokeCircle(r + 4, r + 4, r + 2);
+                        g.fillStyle(0xffffff, .7).fillCircle(r + 4, r + 4, 6);
+                        const key = 'plTex';
+                        g.generateTexture(key, r * 2 + 8, r * 2 + 8);
+                        g.destroy();
+                        return key;
+                    },
+
+                    edge() {
+                        const p = this.PAD,
+                            s = this.scale;
+                        const w = s.width - 2 * p,
+                            h = s.height - 2 * p,
+                            e = Math.floor(Math.random() * 4);
+                        if (e === 0) return { x: p + Math.random() * w, y: p };
+                        if (e === 1) return { x: p + Math.random() * w, y: p + h };
+                        if (e === 2) return { x: p, y: p + Math.random() * h };
+                        return { x: p + w, y: p + Math.random() * h };
+                    }
+                });
+
+            })();
+
+        }
+    </script>
+</body>
+
+</html>
